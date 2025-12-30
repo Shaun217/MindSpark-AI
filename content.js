@@ -5,16 +5,20 @@ let shadowRoot = null;
 let activeContainer = null;
 let activeMenu = null;
 let floatBtn = null;
-let isResultMode = false;
+let isInteracting = false; // Keeps track if user is interacting with results
+
+// Configuration
+const DEFAULT_RESULT_HEIGHT = 120; // px
 
 // Icons
 const ICONS = {
     spark: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"></path></svg>`,
-    copy: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>`,
-    close: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>`,
+    copy: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>`,
+    chevronDown: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>`,
     summarize: '📝',
     explain: '🤔',
-    translate: '🌐'
+    translate: '🌐',
+    grammar: '✍️'
 };
 
 // CSS Styles
@@ -27,7 +31,7 @@ const STYLES = `
         color: #e2e8f0;
         line-height: 1.5;
         position: absolute;
-        pointer-events: auto; /* Ensure clicks inside are captured */
+        pointer-events: auto;
         z-index: 2147483647;
     }
 
@@ -48,126 +52,123 @@ const STYLES = `
     }
     .ms-float-btn:hover { transform: scale(1.1); }
 
-    /* Menu Card */
+    /* Main Menu Container */
     .ms-menu {
         position: absolute;
         background: #1e293b;
         border: 1px solid #334155;
         border-radius: 12px;
-        padding: 6px;
+        padding: 0;
         display: none; /* Hidden by default */
-        flex-direction: column; gap: 4px;
-        box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
-        min-width: 160px;
+        flex-direction: column;
+        box-shadow: 0 20px 50px -10px rgba(0, 0, 0, 0.5);
+        min-width: 320px;
+        max-width: 400px;
+        width: 340px;
         z-index: 1000;
+        overflow: hidden;
         animation: ms-fade-in 0.15s ease-out;
     }
 
-    .ms-action-btn {
-        background: transparent;
-        border: none;
-        color: #cbd5e1;
-        padding: 8px 12px;
-        text-align: left;
+    /* Action Item (Accordion Row) */
+    .ms-item {
+        border-bottom: 1px solid #334155;
+        background: #1e293b;
+    }
+    .ms-item:last-child { border-bottom: none; }
+
+    /* Header */
+    .ms-item-header {
+        padding: 10px 14px;
+        display: flex; justify-content: space-between; align-items: center;
         cursor: pointer;
-        border-radius: 6px;
-        display: flex; align-items: center; gap: 10px;
-        font-size: 13px;
-        font-weight: 500;
         transition: background 0.1s;
-        font-family: inherit;
         user-select: none;
     }
-    .ms-action-btn:hover { background: #334155; color: white; }
-
-    /* Result Card (Expanded Menu) */
-    .ms-result-card {
-        display: flex; flex-direction: column;
-        background: #1e293b;
-        border: 1px solid #334155;
-        border-radius: 16px;
-        box-shadow: 0 20px 50px -12px rgba(0, 0, 0, 0.6);
-        width: 340px;
-        max-width: 90vw;
-        overflow: hidden;
-        animation: ms-expand 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-    }
-
-    .ms-header {
-        padding: 12px 16px;
-        background: #0f172a;
-        border-bottom: 1px solid #334155;
-        display: flex; justify-content: space-between; align-items: center;
-        flex-shrink: 0;
-    }
-    .ms-title { font-weight: 600; color: #818cf8; font-size: 13px; letter-spacing: 0.5px; text-transform: uppercase; }
-    .ms-close { background: none; border: none; color: #64748b; cursor: pointer; padding: 4px; border-radius: 4px; display: flex; }
-    .ms-close:hover { background: #334155; color: white; }
-
-    .ms-body { 
-        padding: 0; 
-        position: relative; 
-        background: #1e293b; 
-        max-height: 400px;
-        overflow-y: auto;
+    .ms-item-header:hover { background: #334155; }
+    
+    .ms-item-label { display: flex; align-items: center; gap: 10px; font-weight: 500; color: #cbd5e1; }
+    .ms-item-toggle { 
+        color: #64748b; 
+        transition: transform 0.2s; 
+        display: flex; align-items: center;
     }
     
-    .ms-textarea {
-        width: 100%;
-        min-height: 100px; /* Start smaller, expand with content */
-        background: #1e293b;
-        color: #f1f5f9;
-        border: none;
-        padding: 16px;
-        resize: vertical;
-        outline: none;
-        font-family: inherit;
-        font-size: 14px;
+    /* Expanded State */
+    .ms-item.expanded .ms-item-toggle { transform: rotate(180deg); color: #818cf8; }
+    .ms-item.expanded .ms-item-header { background: #283046; }
+    .ms-item.expanded .ms-item-label { color: white; }
+
+    /* Result Body */
+    .ms-item-body {
+        height: 0;
+        overflow: hidden;
+        background: #0f172a;
+        transition: height 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        position: relative;
+    }
+
+    .ms-content-wrapper {
+        padding: 12px;
+    }
+
+    .ms-result-text {
+        font-size: 13.5px;
         line-height: 1.6;
-        display: block;
-        box-sizing: border-box;
+        color: #e2e8f0;
+        white-space: pre-wrap;
     }
 
-    .ms-footer {
-        padding: 10px 16px;
-        background: #1e293b;
-        border-top: 1px solid #334155;
-        display: flex; justify-content: flex-end;
-        flex-shrink: 0;
+    /* Actions inside Result */
+    .ms-result-actions {
+        display: flex; justify-content: flex-end; gap: 8px;
+        margin-top: 8px;
+        padding-top: 8px;
+        border-top: 1px dashed #334155;
     }
 
-    .ms-btn-primary {
-        background: #4f46e5;
-        color: white;
-        border: none;
-        padding: 6px 14px;
-        border-radius: 6px;
-        cursor: pointer;
-        font-size: 12px;
-        font-weight: 600;
-        display: flex; align-items: center; gap: 6px;
-        transition: background 0.1s;
-        font-family: inherit;
-    }
-    .ms-btn-primary:hover { background: #4338ca; }
-    .ms-btn-primary:active { transform: translateY(1px); }
-
-    .ms-loading {
-        padding: 30px;
-        display: flex; flex-direction: column; align-items: center; gap: 10px;
+    .ms-mini-btn {
+        background: transparent;
+        border: 1px solid #334155;
         color: #94a3b8;
-        font-size: 13px;
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 11px;
+        cursor: pointer;
+        display: flex; align-items: center; gap: 4px;
+        transition: all 0.1s;
     }
-    .ms-spinner {
-        width: 20px; height: 20px;
-        border: 2px solid #334155;
-        border-top-color: #818cf8;
-        border-radius: 50%;
-        animation: ms-spin 0.8s linear infinite;
+    .ms-mini-btn:hover { background: #334155; color: white; }
+    .ms-mini-btn.copied { background: #059669; border-color: #059669; color: white; }
+
+    /* Show More Overlay */
+    .ms-show-more-overlay {
+        position: absolute; bottom: 0; left: 0; width: 100%;
+        height: 40px;
+        background: linear-gradient(transparent, #0f172a);
+        display: flex; justify-content: center; align-items: flex-end;
+        padding-bottom: 5px;
+        pointer-events: none; /* Let clicks pass through if needed, but button needs pointer events */
     }
+    .ms-expand-trigger {
+        pointer-events: auto;
+        background: #1e293b;
+        border: 1px solid #4f46e5;
+        color: #818cf8;
+        font-size: 10px;
+        padding: 2px 10px;
+        border-radius: 10px;
+        cursor: pointer;
+        font-weight: 600;
+        margin-bottom: 4px;
+    }
+    .ms-expand-trigger:hover { background: #4f46e5; color: white; }
+
+    /* Loading */
+    .ms-loading { padding: 15px; display: flex; align-items: center; gap: 10px; color: #94a3b8; font-size: 13px; }
+    .ms-spinner { width: 14px; height: 14px; border: 2px solid #334155; border-top-color: #818cf8; border-radius: 50%; animation: ms-spin 0.8s linear infinite; }
 
     @keyframes ms-fade-in { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
-    @keyframes ms-expand { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
     @keyframes ms-spin { to { transform: rotate(360deg); } }
 `;
 
@@ -178,7 +179,6 @@ function initShadowDOM() {
     
     shadowHost = document.createElement('div');
     shadowHost.id = 'mindspark-ai-host';
-    // The host itself has 0 dimension but allows pointer events on children
     shadowHost.style.cssText = 'position: absolute; top: 0; left: 0; width: 0; height: 0; z-index: 2147483647; pointer-events: none;';
     
     shadowRoot = shadowHost.attachShadow({ mode: 'open' });
@@ -193,24 +193,12 @@ function initShadowDOM() {
 // --- Event Listeners ---
 
 document.addEventListener('mouseup', (e) => {
-    // If we are clicking inside our shadow DOM, ignore standard selection checks
     if (shadowHost && shadowHost.contains(e.target)) return;
-
-    // Debounce to allow selection to update
-    setTimeout(() => {
-        handleSelection();
-    }, 50);
+    setTimeout(handleSelection, 50);
 });
 
 document.addEventListener('mousedown', (e) => {
-    // Logic to close UI if clicking outside
-    // Note: e.target might be the host if event is retargeted from shadow DOM. 
-    // We check if the click target is NOT our host (meaning it's the page).
-    
-    // In open shadow roots, internal clicks often retarget to the host.
-    // If the target IS the host, the click was inside.
-    // If the target is NOT the host, the click was outside.
-    
+    // If clicking outside the shadow host, close UI
     if (shadowHost && e.target !== shadowHost) {
         hideUI();
     }
@@ -219,110 +207,98 @@ document.addEventListener('mousedown', (e) => {
 // --- Logic ---
 
 function handleSelection() {
-    // If we are displaying a result, do not auto-close or re-open on selection change
-    if (isResultMode) return;
-
+    // If user has expanded any item, we consider them "interacting" and don't close on new selection instantly
+    // unless the selection is empty (clicking away).
     const selection = window.getSelection();
     const text = selection.toString().trim();
 
-    if (text.length > 0) {
-        initShadowDOM();
-
-        const range = selection.getRangeAt(0);
-        const rect = range.getBoundingClientRect();
-        
-        const scrollX = window.scrollX;
-        const scrollY = window.scrollY;
-
-        // Position: Center above selection
-        const x = rect.left + scrollX + (rect.width / 2);
-        const y = rect.top + scrollY - 45;
-
-        showFloatingButton(x, y, text);
-    } else {
-        // Only hide if not in result mode (checked above)
+    if (text.length === 0) {
         hideUI();
+        return;
     }
+
+    if (isInteracting) return; // Don't move the button if we are busy with a result
+
+    initShadowDOM();
+
+    const range = selection.getRangeAt(0);
+    const rect = range.getBoundingClientRect();
+    const scrollX = window.scrollX;
+    const scrollY = window.scrollY;
+
+    const x = rect.left + scrollX + (rect.width / 2);
+    const y = rect.top + scrollY - 45;
+
+    showUI(x, y, text);
 }
 
 function hideUI() {
-    if (shadowRoot && activeContainer) {
+    if (activeContainer) {
         activeContainer.remove();
         activeContainer = null;
         activeMenu = null;
         floatBtn = null;
-        isResultMode = false;
+        isInteracting = false;
     }
 }
 
-function showFloatingButton(x, y, text) {
-    if (isResultMode) return; // Double check protection
-
-    // If container exists, update position? No, simpler to recreate for MVP or just move it.
-    // For smoothness, if it exists and we are just updating text selection, maybe move it.
-    // But here we recreate to ensure fresh state.
-    if (activeContainer) {
-        activeContainer.remove();
-    }
+function showUI(x, y, text) {
+    if (activeContainer) activeContainer.remove();
 
     const container = document.createElement('div');
     container.className = 'ms-container';
     
-    // Button
+    // 1. Float Button
     const btn = document.createElement('div');
     btn.className = 'ms-float-btn';
     btn.style.left = `${x}px`;
     btn.style.top = `${y}px`;
     btn.innerHTML = ICONS.spark;
-    
-    // PREVENT SELECTION LOSS: Stop mousedown propagation
     btn.onmousedown = (e) => { e.stopPropagation(); e.preventDefault(); };
 
-    // Menu Container
+    // 2. Menu Container
     const menu = document.createElement('div');
     menu.className = 'ms-menu';
-    // Initial position: centered below button
+    // Center logic
     menu.style.left = `${x}px`;
     menu.style.top = `${y + 45}px`;
-    menu.style.transform = 'translateX(-50%)';
+    menu.style.transform = 'translateX(-50%)'; 
+    menu.onmousedown = (e) => { e.stopPropagation(); }; // Prevent clicks in menu from closing UI
 
-    // Prevent selection loss on menu click
-    menu.onmousedown = (e) => { e.stopPropagation(); e.preventDefault(); };
-
+    // 3. Define Actions
     const actions = [
-        { label: 'Summarize', icon: ICONS.summarize, prompt: 'Summarize this text in concise bullet points:' },
-        { label: 'Explain', icon: ICONS.explain, prompt: 'Explain this text simply like I am 5 years old:' },
-        { label: 'Translate', icon: ICONS.translate, prompt: 'Translate this text to English:' }
+        { id: 'sum', label: 'Summarize', icon: ICONS.summarize, prompt: 'Summarize this text in concise bullet points:' },
+        { id: 'exp', label: 'Explain', icon: ICONS.explain, prompt: 'Explain this text simply like I am 5 years old:' },
+        { id: 'trans', label: 'Translate', icon: ICONS.translate, prompt: 'Translate this text to English:' },
+        { id: 'fix', label: 'Fix Grammar', icon: ICONS.grammar, prompt: 'Fix grammar and improve flow:' }
     ];
 
-    actions.forEach(action => {
-        const item = document.createElement('button');
-        item.className = 'ms-action-btn';
-        item.innerHTML = `<span>${action.icon}</span> ${action.label}`;
-        item.onclick = (e) => {
-            e.stopPropagation(); // Stop bubbling
-            // We transform the current UI into the Result UI
-            transformToResult(container, menu, action, text, x, y);
-        };
+    // 4. Build Accordion Items
+    actions.forEach(act => {
+        const item = createActionItem(act, text);
         menu.appendChild(item);
     });
 
-    // Hover Interaction
+    // 5. Hover Logic
     let hideTimeout;
-    const showMenu = () => {
+    const openMenu = () => {
         clearTimeout(hideTimeout);
         menu.style.display = 'flex';
+        // Reposition if offscreen right/left
+        // (Simple boundary check could be added here)
     };
-    const hideMenu = () => {
-        hideTimeout = setTimeout(() => {
-            menu.style.display = 'none';
-        }, 300);
+    const closeMenu = () => {
+        if (!isInteracting) { // Only hide if no result is expanded
+            hideTimeout = setTimeout(() => {
+                menu.style.display = 'none';
+            }, 300);
+        }
     };
 
-    btn.onmouseenter = showMenu;
-    btn.onmouseleave = hideMenu;
-    menu.onmouseenter = showMenu;
-    menu.onmouseleave = hideMenu;
+    btn.onmouseenter = openMenu;
+    btn.onmouseleave = closeMenu;
+    menu.onmouseenter = openMenu;
+    menu.onmouseleave = closeMenu;
 
     container.appendChild(btn);
     container.appendChild(menu);
@@ -333,118 +309,188 @@ function showFloatingButton(x, y, text) {
     floatBtn = btn;
 }
 
-function transformToResult(container, menuElement, action, text, x, y) {
-    // 1. Set Mode
-    isResultMode = true;
+function createActionItem(action, sourceText) {
+    const item = document.createElement('div');
+    item.className = 'ms-item';
 
-    // 2. Hide Button
-    if (floatBtn) floatBtn.style.display = 'none';
-
-    // 3. Transform Menu style to Result Card style
-    menuElement.className = 'ms-result-card';
-    menuElement.style.transform = 'none'; // Remove centering transform if we calculate manually
-    
-    // Recalculate position to keep it on screen
-    const width = 340;
-    let finalX = x - (width / 2);
-    // Boundary checks
-    if (finalX < 10) finalX = 10;
-    if (finalX + width > window.innerWidth) finalX = window.innerWidth - width - 10;
-    
-    menuElement.style.left = `${finalX}px`;
-    menuElement.style.top = `${y}px`; // Move it up to where button was? Or keep below? Let's move to Y.
-
-    // 4. Show Loading UI
-    menuElement.innerHTML = `
-        <div class="ms-header">
-            <span class="ms-title">${action.label}</span>
-            <button class="ms-close">${ICONS.close}</button>
+    // Header
+    const header = document.createElement('div');
+    header.className = 'ms-item-header';
+    header.innerHTML = `
+        <div class="ms-item-label">
+            <span>${action.icon}</span> ${action.label}
         </div>
-        <div class="ms-body">
-            <div class="ms-loading">
-                <div class="ms-spinner"></div>
-                <span>MindSpark is thinking...</span>
-            </div>
+        <div class="ms-item-toggle">
+            ${ICONS.chevronDown}
         </div>
     `;
 
-    // Re-attach listeners because innerHTML wiped them
-    menuElement.querySelector('.ms-close').onclick = hideUI;
-    // Prevent selection clearing when interacting with the card
-    menuElement.onmousedown = (e) => { e.stopPropagation(); }; 
+    // Body
+    const body = document.createElement('div');
+    body.className = 'ms-item-body';
+    
+    // State Tracking
+    let hasRun = false;
+    let isExpanded = false;
 
-    // 5. API Call
-    chrome.storage.local.get(['apiKey'], (result) => {
-        if (!result.apiKey) {
-            renderError(menuElement, "API Key missing. Please open extension settings.");
-            return;
+    // Click Handler
+    header.onclick = () => {
+        isExpanded = !isExpanded;
+        
+        // Toggle UI
+        if (isExpanded) {
+            item.classList.add('expanded');
+            isInteracting = true; // Lock UI open
+            
+            if (!hasRun) {
+                // First run: Show loading and call API
+                body.style.height = 'auto'; // Temp to show loading
+                body.innerHTML = `
+                    <div class="ms-loading">
+                        <div class="ms-spinner"></div>
+                        <span>MindSpark is thinking...</span>
+                    </div>
+                `;
+                // Set height to actual for transition
+                const loadingHeight = body.scrollHeight;
+                body.style.height = '0px';
+                requestAnimationFrame(() => body.style.height = loadingHeight + 'px');
+
+                runGeminiAction(action.prompt, sourceText, body).then(() => {
+                    hasRun = true;
+                });
+            } else {
+                // Just expand (height will be set by content wrapper)
+                const wrapper = body.querySelector('.ms-content-wrapper');
+                if (wrapper) {
+                     // Check "Show More" state logic
+                     const isTruncated = wrapper.dataset.truncated === 'true';
+                     const naturalHeight = wrapper.scrollHeight;
+                     const targetHeight = isTruncated ? DEFAULT_RESULT_HEIGHT : naturalHeight;
+                     body.style.height = targetHeight + 'px';
+                }
+            }
+        } else {
+            item.classList.remove('expanded');
+            body.style.height = '0px';
+            
+            // If all items are collapsed, we allow auto-hide again
+            const anyExpanded = activeMenu.querySelector('.ms-item.expanded');
+            if (!anyExpanded) isInteracting = false;
         }
+    };
 
-        const prompt = `${action.prompt}\n\n"${text}"`;
+    item.appendChild(header);
+    item.appendChild(body);
+    return item;
+}
 
-        chrome.runtime.sendMessage({
-            action: 'CALL_GEMINI',
-            apiKey: result.apiKey,
-            prompt: prompt
-        }, (response) => {
-            if (chrome.runtime.lastError) {
-                renderError(menuElement, "Connection failed: " + chrome.runtime.lastError.message);
+async function runGeminiAction(promptPrefix, text, bodyContainer) {
+    // API Call
+    return new Promise(resolve => {
+        chrome.storage.local.get(['apiKey'], async (result) => {
+            if (!result.apiKey) {
+                renderError(bodyContainer, "API Key missing. Settings > Extension.");
+                resolve();
                 return;
             }
 
-            if (response && response.success) {
-                renderResult(menuElement, response.data);
-            } else {
-                renderError(menuElement, response.error || "Unknown error occurred.");
+            try {
+                const response = await chrome.runtime.sendMessage({
+                    action: 'CALL_GEMINI',
+                    apiKey: result.apiKey,
+                    prompt: `${promptPrefix}\n\n"${text}"`
+                });
+
+                if (response && response.success) {
+                    renderResultContent(bodyContainer, response.data);
+                } else {
+                    renderError(bodyContainer, response.error || "Error generating response.");
+                }
+            } catch (e) {
+                renderError(bodyContainer, "Connection error.");
             }
+            resolve();
         });
     });
 }
 
-function renderResult(card, text) {
-    const body = card.querySelector('.ms-body');
-    // We replace the loading body with the textarea
-    body.innerHTML = `
-        <textarea class="ms-textarea" spellcheck="false"></textarea>
-    `;
-    const textarea = body.querySelector('textarea');
-    textarea.value = text;
+function renderResultContent(container, text) {
+    // Clear loading
+    container.innerHTML = '';
 
-    // Auto-resize logic
-    textarea.style.height = 'auto';
-    textarea.style.height = (textarea.scrollHeight + 10) + 'px';
-
-    // Footer
-    const footer = document.createElement('div');
-    footer.className = 'ms-footer';
-    footer.innerHTML = `
-        <button class="ms-btn-primary">
-            ${ICONS.copy} Copy
-        </button>
-    `;
-
-    const copyBtn = footer.querySelector('button');
-    copyBtn.onclick = () => {
-        textarea.select();
-        document.execCommand('copy');
-        
-        const originalHtml = copyBtn.innerHTML;
-        copyBtn.innerHTML = `<span>✅</span> Copied!`;
-        copyBtn.style.background = '#059669';
+    const wrapper = document.createElement('div');
+    wrapper.className = 'ms-content-wrapper';
+    
+    const textDiv = document.createElement('div');
+    textDiv.className = 'ms-result-text';
+    textDiv.textContent = text;
+    
+    // Actions (Copy)
+    const actionsDiv = document.createElement('div');
+    actionsDiv.className = 'ms-result-actions';
+    
+    const copyBtn = document.createElement('button');
+    copyBtn.className = 'ms-mini-btn';
+    copyBtn.innerHTML = `${ICONS.copy} Copy`;
+    copyBtn.onclick = (e) => {
+        e.stopPropagation();
+        navigator.clipboard.writeText(text);
+        copyBtn.innerHTML = `✅ Copied`;
+        copyBtn.classList.add('copied');
         setTimeout(() => {
-            copyBtn.innerHTML = originalHtml;
-            copyBtn.style.background = '#4f46e5';
+            copyBtn.innerHTML = `${ICONS.copy} Copy`;
+            copyBtn.classList.remove('copied');
         }, 2000);
     };
 
-    card.appendChild(footer);
+    actionsDiv.appendChild(copyBtn);
+    wrapper.appendChild(textDiv);
+    wrapper.appendChild(actionsDiv);
+    container.appendChild(wrapper);
+
+    // Height Calculation Logic
+    // We need to append to DOM to measure, but container is visible (height auto or animating)
+    // Actually container height is currently fixed to loading height.
+    
+    // Let's perform height check
+    const naturalHeight = wrapper.getBoundingClientRect().height; // Won't work if parent height is constrained/animating 
+    
+    // Force allow measuring
+    const prevHeight = container.style.height;
+    container.style.height = 'auto';
+    const realHeight = container.scrollHeight;
+    
+    if (realHeight > DEFAULT_RESULT_HEIGHT + 20) { // +20 buffer
+        // Truncate mode
+        container.style.height = DEFAULT_RESULT_HEIGHT + 'px';
+        wrapper.dataset.truncated = 'true';
+        
+        // Add Overlay
+        const overlay = document.createElement('div');
+        overlay.className = 'ms-show-more-overlay';
+        
+        const showMoreBtn = document.createElement('button');
+        showMoreBtn.className = 'ms-expand-trigger';
+        showMoreBtn.innerText = 'Show All';
+        showMoreBtn.onclick = (e) => {
+            e.stopPropagation();
+            container.style.height = realHeight + 'px';
+            overlay.remove();
+            wrapper.dataset.truncated = 'false';
+        };
+        
+        overlay.appendChild(showMoreBtn);
+        container.appendChild(overlay);
+    } else {
+        // Fit content
+        container.style.height = realHeight + 'px';
+    }
 }
 
-function renderError(card, msg) {
-    const body = card.querySelector('.ms-body');
-    body.innerHTML = `
-        <div style="padding: 20px; color: #ef4444; font-size: 13px; text-align: center;">
-            ${msg}
-        </div>
+function renderError(container, msg) {
+    container.innerHTML = `
+        <div style="padding: 12px; color: #ef4444; font-size: 13px;">${msg}</div>
     `;
+    container.style.height = container.scrollHeight + 'px';
 }
