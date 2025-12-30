@@ -2,6 +2,12 @@
 
 // --- DOM Elements ---
 const settingsView = document.getElementById('settings-view');
+const resultModal = document.getElementById('result-modal');
+const modalTitle = document.getElementById('modal-title');
+const resultTextarea = document.getElementById('result-textarea');
+const copyBtn = document.getElementById('copy-btn');
+const closeModalBtn = document.getElementById('close-modal-btn');
+
 const apiKeyInput = document.getElementById('api-key-input');
 const chatContainer = document.getElementById('chat-container');
 const userInput = document.getElementById('user-input');
@@ -23,7 +29,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 });
 
-// --- Event Listeners ---
+// --- Settings Event Listeners ---
 document.getElementById('open-settings-btn').addEventListener('click', showSettings);
 document.getElementById('cancel-settings-btn').addEventListener('click', hideSettings);
 
@@ -37,35 +43,50 @@ document.getElementById('save-settings-btn').addEventListener('click', () => {
     });
 });
 
+// --- Modal Event Listeners ---
+closeModalBtn.addEventListener('click', () => {
+    resultModal.classList.add('hidden');
+});
+
+copyBtn.addEventListener('click', () => {
+    const text = resultTextarea.value;
+    navigator.clipboard.writeText(text).then(() => {
+        const originalText = copyBtn.innerHTML;
+        copyBtn.innerHTML = '<span>✅</span> Copied!';
+        setTimeout(() => {
+            copyBtn.innerHTML = originalText;
+        }, 2000);
+    });
+});
+
+// --- Chat Event Listeners ---
 sendBtn.addEventListener('click', () => handleSend());
 userInput.addEventListener('keypress', (e) => {
     if (e.key === 'Enter') handleSend();
 });
 
-// Handle Quick Actions
+// --- Quick Actions Logic ---
 document.querySelectorAll('.action-btn').forEach(btn => {
     btn.addEventListener('click', async (e) => {
-        const action = e.target.getAttribute('data-action');
+        const action = e.currentTarget.getAttribute('data-action'); // Use currentTarget to get the button, not span
         
+        // Input Helpers
         if (action === 'fix_grammar') {
             userInput.value = "Fix the grammar in this text: ";
             userInput.focus();
             return;
         }
-
         if (action === 'translate') {
             userInput.value = "Translate this to English: ";
             userInput.focus();
             return;
         }
 
-        // For page actions (Summarize/Explain)
+        // Page Content Actions (Summarize / Explain)
         const loadingId = addLoading();
         try {
-            // Get page content
             const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
             
-            // Execute script safely
             const results = await chrome.scripting.executeScript({
                 target: { tabId: tab.id },
                 func: () => document.body.innerText
@@ -77,12 +98,26 @@ document.querySelectorAll('.action-btn').forEach(btn => {
                 return;
             }
 
-            const pageText = results[0].result.substring(0, 5000); // Limit context
+            const pageText = results[0].result.substring(0, 10000); // Increased limit for Gemini
             let prompt = "";
-            if (action === 'summarize_page') prompt = "Summarize the main points of this text in bullet points:\n\n" + pageText;
-            if (action === 'explain_page') prompt = "Explain the core concept of this text simply:\n\n" + pageText;
+            let title = "";
 
-            await callGemini(prompt, loadingId);
+            if (action === 'summarize_page') {
+                prompt = "Summarize the main points of this webpage content in bullet points:\n\n" + pageText;
+                title = "📝 Page Summary";
+            }
+            if (action === 'explain_page') {
+                prompt = "Explain the core concept of this webpage content simply:\n\n" + pageText;
+                title = "🤔 Page Explanation";
+            }
+
+            // Call API
+            const responseText = await getGeminiResponse(prompt);
+            
+            removeLoading(loadingId);
+            
+            // Open Result Modal
+            showResultModal(title, responseText);
 
         } catch (err) {
             removeLoading(loadingId);
@@ -101,6 +136,12 @@ function hideSettings() {
     settingsView.classList.add('hidden');
 }
 
+function showResultModal(title, content) {
+    modalTitle.textContent = title;
+    resultTextarea.value = content;
+    resultModal.classList.remove('hidden');
+}
+
 async function handleSend() {
     const text = userInput.value.trim();
     if (!text) return;
@@ -109,7 +150,14 @@ async function handleSend() {
     userInput.value = '';
 
     const loadingId = addLoading();
-    await callGemini(text, loadingId);
+    try {
+        const reply = await getGeminiResponse(text);
+        removeLoading(loadingId);
+        addMessage('model', reply);
+    } catch (error) {
+        removeLoading(loadingId);
+        addMessage('model', 'Error: ' + error.message);
+    }
 }
 
 function addMessage(role, text) {
@@ -136,44 +184,34 @@ function removeLoading(id) {
     if (el) el.remove();
 }
 
-// Direct Fetch to Gemini API (No SDK needed)
-async function callGemini(prompt, loadingId) {
+// Core API Logic
+async function getGeminiResponse(prompt) {
     if (!apiKey) {
-        removeLoading(loadingId);
-        addMessage('model', 'Please set your API Key in settings first.');
         showSettings();
-        return;
+        throw new Error("API Key missing");
     }
 
-    try {
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
-        
-        const payload = {
-            contents: [{
-                parts: [{ text: currentPersona + "\n\n" + prompt }]
-            }]
-        };
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${apiKey}`;
+    
+    const payload = {
+        contents: [{
+            parts: [{ text: currentPersona + "\n\n" + prompt }]
+        }]
+    };
 
-        const response = await fetch(url, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-        });
+    const response = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+    });
 
-        const data = await response.json();
-        removeLoading(loadingId);
+    const data = await response.json();
 
-        if (data.error) {
-            addMessage('model', 'API Error: ' + data.error.message);
-        } else if (data.candidates && data.candidates[0].content) {
-            const reply = data.candidates[0].content.parts[0].text;
-            addMessage('model', reply);
-        } else {
-            addMessage('model', 'No response received.');
-        }
-
-    } catch (error) {
-        removeLoading(loadingId);
-        addMessage('model', 'Network Error: ' + error.message);
+    if (data.error) {
+        throw new Error(data.error.message);
+    } else if (data.candidates && data.candidates[0].content) {
+        return data.candidates[0].content.parts[0].text;
+    } else {
+        return "No response received from Gemini.";
     }
 }
