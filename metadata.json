@@ -1,0 +1,5 @@
+{
+  "name": "MindSpark AI",
+  "description": "A productivity Chrome Extension powered by Google Gemini to summarize, explain, and fix grammar on any webpage.",
+  "requestFramePermissions": []
+}

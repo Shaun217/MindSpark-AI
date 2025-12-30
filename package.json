@@ -1,0 +1,20 @@
+{
+  "name": "mindspark-ai",
+  "version": "1.0.0",
+  "description": "Chrome Extension with Gemini",
+  "scripts": {
+    "build": "node build.js",
+    "watch": "node build.js --watch"
+  },
+  "dependencies": {
+    "@google/genai": "^0.1.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
+  },
+  "devDependencies": {
+    "@types/chrome": "^0.0.260",
+    "@types/react": "^18.2.0",
+    "@types/react-dom": "^18.2.0",
+    "esbuild": "^0.20.0"
+  }
+}
