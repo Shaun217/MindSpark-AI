@@ -15,11 +15,11 @@ async function handleGeminiCall(prompt, apiKey) {
 
     const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${apiKey}`;
     
+    // FIX: 'systemInstruction' must be a top-level field in the REST API payload.
+    // We also ask for plain text to ensure the UI looks good without a Markdown renderer.
     const payload = {
         contents: [{ parts: [{ text: prompt }] }],
-        config: { 
-            systemInstruction: { parts: [{ text: "You are a helpful assistant. Be concise. Format output in Markdown." }] } 
-        }
+        systemInstruction: { parts: [{ text: "You are a helpful assistant. Be concise. Use bullet points for lists. Avoid Markdown formatting like bold/italics as the output is displayed in plain text." }] }
     };
 
     try {

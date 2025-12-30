@@ -249,7 +249,11 @@ function showUI(x, y, text) {
     // 1. Float Button
     const btn = document.createElement('div');
     btn.className = 'ms-float-btn';
-    btn.innerHTML = ICONS.spark;
+    
+    // Use icon.png
+    const iconUrl = chrome.runtime.getURL('icon.png');
+    btn.innerHTML = `<img src="${iconUrl}" style="width: 24px; height: 24px; display: block; border-radius: 50%; pointer-events: none;">`;
+    
     btn.style.left = `${x}px`;
     btn.style.top = `${y}px`;
     btn.style.transform = 'translate(-50%, 0)';
