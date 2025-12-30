@@ -1,11 +1,13 @@
-// content.js - Pure JS with Shadow DOM
+// content.js - Accordion Version 2.1
+
+console.log('MindSpark AI: Accordion Content Script Loaded. If you see this, the new file is working.');
 
 let shadowHost = null;
 let shadowRoot = null;
 let activeContainer = null;
 let activeMenu = null;
 let floatBtn = null;
-let isInteracting = false; // Keeps track if user is interacting with results
+let isInteracting = false; 
 
 // Configuration
 const DEFAULT_RESULT_HEIGHT = 120; // px
@@ -175,6 +177,11 @@ const STYLES = `
 // --- Initialization ---
 
 function initShadowDOM() {
+    // 1. Remove old React Root if it exists
+    const oldReactRoot = document.getElementById('mindspark-ai-extension-root');
+    if (oldReactRoot) oldReactRoot.remove();
+
+    // 2. Initialize Shadow Host
     if (shadowHost) return;
     
     shadowHost = document.createElement('div');
@@ -193,7 +200,10 @@ function initShadowDOM() {
 // --- Event Listeners ---
 
 document.addEventListener('mouseup', (e) => {
+    // Ignore clicks inside our own UI
     if (shadowHost && shadowHost.contains(e.target)) return;
+    
+    // Wait for selection to settle
     setTimeout(handleSelection, 50);
 });
 
@@ -207,17 +217,17 @@ document.addEventListener('mousedown', (e) => {
 // --- Logic ---
 
 function handleSelection() {
-    // If user has expanded any item, we consider them "interacting" and don't close on new selection instantly
-    // unless the selection is empty (clicking away).
     const selection = window.getSelection();
     const text = selection.toString().trim();
 
+    // If selection is empty, hide UI
     if (text.length === 0) {
         hideUI();
         return;
     }
 
-    if (isInteracting) return; // Don't move the button if we are busy with a result
+    // If user is currently Interacting (Accordion expanded), DO NOT move the button
+    if (isInteracting) return;
 
     initShadowDOM();
 
@@ -284,8 +294,6 @@ function showUI(x, y, text) {
     const openMenu = () => {
         clearTimeout(hideTimeout);
         menu.style.display = 'flex';
-        // Reposition if offscreen right/left
-        // (Simple boundary check could be added here)
     };
     const closeMenu = () => {
         if (!isInteracting) { // Only hide if no result is expanded
@@ -450,16 +458,7 @@ function renderResultContent(container, text) {
     container.appendChild(wrapper);
 
     // Height Calculation Logic
-    // We need to append to DOM to measure, but container is visible (height auto or animating)
-    // Actually container height is currently fixed to loading height.
-    
-    // Let's perform height check
-    const naturalHeight = wrapper.getBoundingClientRect().height; // Won't work if parent height is constrained/animating 
-    
-    // Force allow measuring
-    const prevHeight = container.style.height;
-    container.style.height = 'auto';
-    const realHeight = container.scrollHeight;
+    const realHeight = wrapper.getBoundingClientRect().height;
     
     if (realHeight > DEFAULT_RESULT_HEIGHT + 20) { // +20 buffer
         // Truncate mode
