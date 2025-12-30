@@ -1,6 +1,6 @@
-// content.js - Accordion Version 2.1
+// content.js - Design V2 (Premium Dark Theme)
 
-console.log('MindSpark AI: Accordion Content Script Loaded. If you see this, the new file is working.');
+console.log('MindSpark AI: Loaded (Design V2)');
 
 let shadowHost = null;
 let shadowRoot = null;
@@ -9,187 +9,184 @@ let activeMenu = null;
 let floatBtn = null;
 let isInteracting = false; 
 
-// Configuration
-const DEFAULT_RESULT_HEIGHT = 120; // px
+// --- Configuration ---
+const CONFIG = {
+    defaultHeight: 140, // px
+    colors: {
+        primary: '#5048e5',
+        menuBg: '#1a192e',
+        panelBg: '#232238',
+        textMain: '#e2e8f0',
+        textSub: '#94a3b8',
+        border: 'rgba(255, 255, 255, 0.08)'
+    }
+};
 
-// Icons
+// --- Icons (SVG) ---
 const ICONS = {
     spark: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"></path></svg>`,
     copy: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>`,
-    chevronDown: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>`,
-    summarize: '📝',
-    explain: '🤔',
-    translate: '🌐',
-    grammar: '✍️'
+    check: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg>`,
+    chevronDown: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>`,
+    settings: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>`,
+    summarize: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#5048e5" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>`,
+    explain: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#5048e5" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>`,
+    translate: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#5048e5" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>`,
+    grammar: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#5048e5" stroke-width="2"><path d="M12 19l7-7 3 3-7 7-3-3z"></path><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"></path><path d="M2 2l7.586 7.586"></path><circle cx="11" cy="11" r="2"></circle></svg>`
 };
 
-// CSS Styles
+// --- CSS Styles ---
 const STYLES = `
     * { box-sizing: border-box; }
     
     .ms-container {
-        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
         font-size: 14px;
-        color: #e2e8f0;
+        color: ${CONFIG.colors.textMain};
         line-height: 1.5;
         position: absolute;
         pointer-events: auto;
         z-index: 2147483647;
     }
 
-    /* Floating Button */
+    /* Floating Spark Button */
     .ms-float-btn {
         position: absolute;
-        width: 36px; height: 36px;
-        background: #4f46e5;
+        width: 38px; height: 38px;
+        background: ${CONFIG.colors.primary};
         color: white;
         border-radius: 50%;
         display: flex; align-items: center; justify-content: center;
         cursor: pointer;
-        box-shadow: 0 4px 12px rgba(79, 70, 229, 0.4);
-        border: 2px solid white;
+        box-shadow: 0 0 20px -5px rgba(80, 72, 229, 0.5);
+        border: 2px solid rgba(255,255,255,0.2);
         transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
         z-index: 1000;
         user-select: none;
     }
-    .ms-float-btn:hover { transform: scale(1.1); }
+    .ms-float-btn:hover { transform: scale(1.15); border-color: white; }
 
-    /* Main Menu Container */
+    /* Main Menu */
     .ms-menu {
         position: absolute;
-        background: #1e293b;
-        border: 1px solid #334155;
+        background: ${CONFIG.colors.menuBg};
+        border: 1px solid ${CONFIG.colors.border};
         border-radius: 12px;
-        padding: 0;
-        display: none; /* Hidden by default */
+        padding: 8px;
+        display: none; 
         flex-direction: column;
-        box-shadow: 0 20px 50px -10px rgba(0, 0, 0, 0.5);
+        gap: 6px;
+        box-shadow: 0 20px 50px -10px rgba(0, 0, 0, 0.6);
         min-width: 320px;
-        max-width: 400px;
         width: 340px;
         z-index: 1000;
-        overflow: hidden;
-        animation: ms-fade-in 0.15s ease-out;
+        animation: ms-fade-in 0.2s ease-out;
+        backdrop-filter: blur(10px);
     }
-
-    /* Action Item (Accordion Row) */
-    .ms-item {
-        border-bottom: 1px solid #334155;
-        background: #1e293b;
-    }
-    .ms-item:last-child { border-bottom: none; }
 
     /* Header */
-    .ms-item-header {
-        padding: 10px 14px;
+    .ms-header {
+        padding: 4px 8px 8px;
+        border-bottom: 1px solid ${CONFIG.colors.border};
         display: flex; justify-content: space-between; align-items: center;
-        cursor: pointer;
-        transition: background 0.1s;
-        user-select: none;
-    }
-    .ms-item-header:hover { background: #334155; }
-    
-    .ms-item-label { display: flex; align-items: center; gap: 10px; font-weight: 500; color: #cbd5e1; }
-    .ms-item-toggle { 
-        color: #64748b; 
-        transition: transform 0.2s; 
-        display: flex; align-items: center;
-    }
-    
-    /* Expanded State */
-    .ms-item.expanded .ms-item-toggle { transform: rotate(180deg); color: #818cf8; }
-    .ms-item.expanded .ms-item-header { background: #283046; }
-    .ms-item.expanded .ms-item-label { color: white; }
-
-    /* Result Body */
-    .ms-item-body {
-        height: 0;
-        overflow: hidden;
-        background: #0f172a;
-        transition: height 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        position: relative;
-    }
-
-    .ms-content-wrapper {
-        padding: 12px;
-    }
-
-    .ms-result-text {
-        font-size: 13.5px;
-        line-height: 1.6;
-        color: #e2e8f0;
-        white-space: pre-wrap;
-    }
-
-    /* Actions inside Result */
-    .ms-result-actions {
-        display: flex; justify-content: flex-end; gap: 8px;
-        margin-top: 8px;
-        padding-top: 8px;
-        border-top: 1px dashed #334155;
-    }
-
-    .ms-mini-btn {
-        background: transparent;
-        border: 1px solid #334155;
-        color: #94a3b8;
-        padding: 4px 8px;
-        border-radius: 4px;
-        font-size: 11px;
-        cursor: pointer;
-        display: flex; align-items: center; gap: 4px;
-        transition: all 0.1s;
-    }
-    .ms-mini-btn:hover { background: #334155; color: white; }
-    .ms-mini-btn.copied { background: #059669; border-color: #059669; color: white; }
-
-    /* Show More Overlay */
-    .ms-show-more-overlay {
-        position: absolute; bottom: 0; left: 0; width: 100%;
-        height: 40px;
-        background: linear-gradient(transparent, #0f172a);
-        display: flex; justify-content: center; align-items: flex-end;
-        padding-bottom: 5px;
-        pointer-events: none; /* Let clicks pass through if needed, but button needs pointer events */
-    }
-    .ms-expand-trigger {
-        pointer-events: auto;
-        background: #1e293b;
-        border: 1px solid #4f46e5;
-        color: #818cf8;
-        font-size: 10px;
-        padding: 2px 10px;
-        border-radius: 10px;
-        cursor: pointer;
-        font-weight: 600;
         margin-bottom: 4px;
     }
-    .ms-expand-trigger:hover { background: #4f46e5; color: white; }
+    .ms-logo { display: flex; align-items: center; gap: 6px; font-weight: 600; font-size: 12px; color: ${CONFIG.colors.textSub}; text-transform: uppercase; letter-spacing: 0.5px; }
+    .ms-icon-settings { color: ${CONFIG.colors.textSub}; cursor: pointer; transition: color 0.2s; opacity: 0.7; }
+    .ms-icon-settings:hover { color: white; opacity: 1; }
 
-    /* Loading */
-    .ms-loading { padding: 15px; display: flex; align-items: center; gap: 10px; color: #94a3b8; font-size: 13px; }
-    .ms-spinner { width: 14px; height: 14px; border: 2px solid #334155; border-top-color: #818cf8; border-radius: 50%; animation: ms-spin 0.8s linear infinite; }
+    /* Action Card */
+    .ms-card {
+        background: ${CONFIG.colors.panelBg};
+        border: 1px solid ${CONFIG.colors.border};
+        border-radius: 8px;
+        overflow: hidden;
+        transition: background 0.2s, border-color 0.2s;
+    }
+    .ms-card:hover { border-color: rgba(255,255,255,0.15); }
+
+    /* Card Header */
+    .ms-card-header {
+        width: 100%;
+        padding: 10px 12px;
+        display: flex; align-items: center; gap: 10px;
+        cursor: pointer;
+        background: transparent;
+        border: none;
+        color: ${CONFIG.colors.textMain};
+        text-align: left;
+    }
+    .ms-card-title { flex: 1; font-weight: 500; font-size: 13.5px; }
+    .ms-shortcut { font-size: 11px; color: ${CONFIG.colors.textSub}; opacity: 0.5; font-family: monospace; }
+    
+    /* Card Body */
+    .ms-card-body {
+        height: 0;
+        overflow: hidden;
+        transition: height 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        background: rgba(0,0,0,0.2);
+    }
+    
+    /* Content Styling */
+    .ms-content { padding: 0 12px 12px; font-size: 13px; color: ${CONFIG.colors.textSub}; line-height: 1.6; position: relative; }
+    .ms-text-block { white-space: pre-wrap; }
+
+    /* Processing State */
+    .ms-processing { display: flex; align-items: center; gap: 8px; padding: 12px; }
+    .ms-dot-container { position: relative; width: 8px; height: 8px; }
+    .ms-dot { width: 8px; height: 8px; background: ${CONFIG.colors.primary}; border-radius: 50%; position: absolute; }
+    .ms-ping { position: absolute; width: 100%; height: 100%; border-radius: 50%; background: ${CONFIG.colors.primary}; animation: ping 1.5s cubic-bezier(0, 0, 0.2, 1) infinite; opacity: 0.75; }
+    .ms-status-text { font-size: 11px; font-weight: 600; color: ${CONFIG.colors.primary}; text-transform: uppercase; letter-spacing: 0.5px; }
+
+    /* Footer / Actions */
+    .ms-actions-bar {
+        display: flex; justify-content: space-between; align-items: center;
+        margin-top: 8px;
+        padding-top: 8px;
+        border-top: 1px solid ${CONFIG.colors.border};
+    }
+    .ms-icon-btn {
+        background: rgba(255,255,255,0.05);
+        border: none;
+        border-radius: 4px;
+        width: 24px; height: 24px;
+        display: flex; align-items: center; justify-content: center;
+        color: ${CONFIG.colors.textSub};
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+    .ms-icon-btn:hover { background: rgba(255,255,255,0.1); color: white; }
+    
+    /* Truncate / Show More */
+    .ms-truncated .ms-text-block { mask-image: linear-gradient(to bottom, black 60%, transparent 100%); -webkit-mask-image: linear-gradient(to bottom, black 60%, transparent 100%); }
+    .ms-expand-btn {
+        width: 100%; height: 20px;
+        display: flex; align-items: center; justify-content: center;
+        background: transparent; border: none;
+        color: ${CONFIG.colors.textSub};
+        cursor: pointer;
+        margin-top: -10px; z-index: 10; position: relative;
+    }
+    .ms-expand-btn:hover { color: ${CONFIG.colors.primary}; }
 
     @keyframes ms-fade-in { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
-    @keyframes ms-spin { to { transform: rotate(360deg); } }
+    @keyframes ping { 75%, 100% { transform: scale(2); opacity: 0; } }
 `;
 
 // --- Initialization ---
 
 function initShadowDOM() {
-    // 1. Remove old React Root if it exists
-    const oldReactRoot = document.getElementById('mindspark-ai-extension-root');
-    if (oldReactRoot) oldReactRoot.remove();
+    // Cleanup old containers
+    const old = document.getElementById('mindspark-host');
+    if (old) old.remove();
 
-    // 2. Initialize Shadow Host
     if (shadowHost) return;
     
     shadowHost = document.createElement('div');
-    shadowHost.id = 'mindspark-ai-host';
+    shadowHost.id = 'mindspark-host';
     shadowHost.style.cssText = 'position: absolute; top: 0; left: 0; width: 0; height: 0; z-index: 2147483647; pointer-events: none;';
     
     shadowRoot = shadowHost.attachShadow({ mode: 'open' });
-    
     const styleEl = document.createElement('style');
     styleEl.textContent = STYLES;
     shadowRoot.appendChild(styleEl);
@@ -197,21 +194,15 @@ function initShadowDOM() {
     document.body.appendChild(shadowHost);
 }
 
-// --- Event Listeners ---
+// --- Events ---
 
 document.addEventListener('mouseup', (e) => {
-    // Ignore clicks inside our own UI
     if (shadowHost && shadowHost.contains(e.target)) return;
-    
-    // Wait for selection to settle
     setTimeout(handleSelection, 50);
 });
 
 document.addEventListener('mousedown', (e) => {
-    // If clicking outside the shadow host, close UI
-    if (shadowHost && e.target !== shadowHost) {
-        hideUI();
-    }
+    if (shadowHost && e.target !== shadowHost) hideUI();
 });
 
 // --- Logic ---
@@ -220,13 +211,11 @@ function handleSelection() {
     const selection = window.getSelection();
     const text = selection.toString().trim();
 
-    // If selection is empty, hide UI
     if (text.length === 0) {
         hideUI();
         return;
     }
 
-    // If user is currently Interacting (Accordion expanded), DO NOT move the button
     if (isInteracting) return;
 
     initShadowDOM();
@@ -235,9 +224,10 @@ function handleSelection() {
     const rect = range.getBoundingClientRect();
     const scrollX = window.scrollX;
     const scrollY = window.scrollY;
-
+    
+    // Position: Center above selection
     const x = rect.left + scrollX + (rect.width / 2);
-    const y = rect.top + scrollY - 45;
+    const y = rect.top + scrollY - 50;
 
     showUI(x, y, text);
 }
@@ -246,8 +236,6 @@ function hideUI() {
     if (activeContainer) {
         activeContainer.remove();
         activeContainer = null;
-        activeMenu = null;
-        floatBtn = null;
         isInteracting = false;
     }
 }
@@ -261,235 +249,211 @@ function showUI(x, y, text) {
     // 1. Float Button
     const btn = document.createElement('div');
     btn.className = 'ms-float-btn';
+    btn.innerHTML = ICONS.spark;
     btn.style.left = `${x}px`;
     btn.style.top = `${y}px`;
-    btn.innerHTML = ICONS.spark;
-    btn.onmousedown = (e) => { e.stopPropagation(); e.preventDefault(); };
+    btn.style.transform = 'translate(-50%, 0)';
+    btn.onmousedown = (e) => { e.preventDefault(); e.stopPropagation(); };
 
-    // 2. Menu Container
+    // 2. Menu
     const menu = document.createElement('div');
     menu.className = 'ms-menu';
-    // Center logic
     menu.style.left = `${x}px`;
     menu.style.top = `${y + 45}px`;
-    menu.style.transform = 'translateX(-50%)'; 
-    menu.onmousedown = (e) => { e.stopPropagation(); }; // Prevent clicks in menu from closing UI
+    menu.style.transform = 'translate(-50%, 0)';
+    menu.onmousedown = (e) => e.stopPropagation();
 
-    // 3. Define Actions
+    // 2.1 Header
+    const header = document.createElement('div');
+    header.className = 'ms-header';
+    header.innerHTML = `
+        <div class="ms-logo">${ICONS.spark} MindSpark AI</div>
+        <div class="ms-icon-settings">${ICONS.settings}</div>
+    `;
+    menu.appendChild(header);
+
+    // 2.2 Cards
     const actions = [
-        { id: 'sum', label: 'Summarize', icon: ICONS.summarize, prompt: 'Summarize this text in concise bullet points:' },
-        { id: 'exp', label: 'Explain', icon: ICONS.explain, prompt: 'Explain this text simply like I am 5 years old:' },
-        { id: 'trans', label: 'Translate', icon: ICONS.translate, prompt: 'Translate this text to English:' },
-        { id: 'fix', label: 'Fix Grammar', icon: ICONS.grammar, prompt: 'Fix grammar and improve flow:' }
+        { id: 'sum', label: 'Summarize Selection', short: 'Cmd+S', icon: ICONS.summarize, prompt: 'Summarize this text in concise bullet points:' },
+        { id: 'exp', label: 'Explain Selection', short: 'Cmd+E', icon: ICONS.explain, prompt: 'Explain this text simply like I am 5 years old:' },
+        { id: 'fix', label: 'Fix Grammar', short: 'Cmd+G', icon: ICONS.grammar, prompt: 'Fix grammar and improve flow:' },
+        { id: 'trans', label: 'Translate Selection', short: '', icon: ICONS.translate, prompt: 'Translate this text to English:' }
     ];
 
-    // 4. Build Accordion Items
     actions.forEach(act => {
-        const item = createActionItem(act, text);
-        menu.appendChild(item);
+        menu.appendChild(createCard(act, text));
     });
 
-    // 5. Hover Logic
-    let hideTimeout;
-    const openMenu = () => {
-        clearTimeout(hideTimeout);
-        menu.style.display = 'flex';
-    };
-    const closeMenu = () => {
-        if (!isInteracting) { // Only hide if no result is expanded
-            hideTimeout = setTimeout(() => {
-                menu.style.display = 'none';
-            }, 300);
-        }
+    // Hover interactions
+    let hideTimer;
+    const cancelHide = () => { clearTimeout(hideTimer); menu.style.display = 'flex'; };
+    const doHide = () => {
+        if (!isInteracting) hideTimer = setTimeout(() => menu.style.display = 'none', 300);
     };
 
-    btn.onmouseenter = openMenu;
-    btn.onmouseleave = closeMenu;
-    menu.onmouseenter = openMenu;
-    menu.onmouseleave = closeMenu;
+    btn.onmouseenter = cancelHide;
+    btn.onmouseleave = doHide;
+    menu.onmouseenter = cancelHide;
+    menu.onmouseleave = doHide;
 
     container.appendChild(btn);
     container.appendChild(menu);
     shadowRoot.appendChild(container);
-    
     activeContainer = container;
     activeMenu = menu;
-    floatBtn = btn;
 }
 
-function createActionItem(action, sourceText) {
-    const item = document.createElement('div');
-    item.className = 'ms-item';
+function createCard(action, sourceText) {
+    const card = document.createElement('div');
+    card.className = 'ms-card';
 
-    // Header
-    const header = document.createElement('div');
-    header.className = 'ms-item-header';
+    const header = document.createElement('button');
+    header.className = 'ms-card-header';
     header.innerHTML = `
-        <div class="ms-item-label">
-            <span>${action.icon}</span> ${action.label}
-        </div>
-        <div class="ms-item-toggle">
-            ${ICONS.chevronDown}
-        </div>
+        ${action.icon}
+        <span class="ms-card-title">${action.label}</span>
+        ${action.short ? `<span class="ms-shortcut">${action.short}</span>` : ''}
     `;
 
-    // Body
     const body = document.createElement('div');
-    body.className = 'ms-item-body';
-    
-    // State Tracking
-    let hasRun = false;
-    let isExpanded = false;
+    body.className = 'ms-card-body';
 
-    // Click Handler
+    let hasRun = false;
+    let isOpen = false;
+
     header.onclick = () => {
-        isExpanded = !isExpanded;
-        
-        // Toggle UI
-        if (isExpanded) {
-            item.classList.add('expanded');
-            isInteracting = true; // Lock UI open
+        isOpen = !isOpen;
+        if (isOpen) {
+            isInteracting = true; // Lock UI
             
+            // Close others (Accordion behavior)
+            activeMenu.querySelectorAll('.ms-card-body').forEach(b => {
+                if(b !== body) b.style.height = '0px';
+            });
+
             if (!hasRun) {
-                // First run: Show loading and call API
-                body.style.height = 'auto'; // Temp to show loading
+                // Show Loading
+                body.style.height = 'auto';
                 body.innerHTML = `
-                    <div class="ms-loading">
-                        <div class="ms-spinner"></div>
-                        <span>MindSpark is thinking...</span>
+                    <div class="ms-processing">
+                        <div class="ms-dot-container">
+                            <span class="ms-ping"></span>
+                            <span class="ms-dot"></span>
+                        </div>
+                        <span class="ms-status-text">Processing...</span>
                     </div>
                 `;
-                // Set height to actual for transition
-                const loadingHeight = body.scrollHeight;
+                const h = body.scrollHeight;
                 body.style.height = '0px';
-                requestAnimationFrame(() => body.style.height = loadingHeight + 'px');
+                requestAnimationFrame(() => body.style.height = h + 'px');
 
-                runGeminiAction(action.prompt, sourceText, body).then(() => {
+                // Call API
+                runGemini(action.prompt, sourceText).then(result => {
+                    renderResult(body, result);
                     hasRun = true;
                 });
             } else {
-                // Just expand (height will be set by content wrapper)
-                const wrapper = body.querySelector('.ms-content-wrapper');
-                if (wrapper) {
-                     // Check "Show More" state logic
-                     const isTruncated = wrapper.dataset.truncated === 'true';
-                     const naturalHeight = wrapper.scrollHeight;
-                     const targetHeight = isTruncated ? DEFAULT_RESULT_HEIGHT : naturalHeight;
-                     body.style.height = targetHeight + 'px';
-                }
+                // Re-open existing
+                const wrapper = body.querySelector('.ms-content');
+                const desiredH = wrapper ? wrapper.scrollHeight : 50;
+                // If truncated, respect default height
+                const isTrunc = wrapper && wrapper.classList.contains('ms-truncated');
+                body.style.height = (isTrunc ? CONFIG.defaultHeight : desiredH) + 'px';
             }
         } else {
-            item.classList.remove('expanded');
             body.style.height = '0px';
-            
-            // If all items are collapsed, we allow auto-hide again
-            const anyExpanded = activeMenu.querySelector('.ms-item.expanded');
-            if (!anyExpanded) isInteracting = false;
         }
     };
 
-    item.appendChild(header);
-    item.appendChild(body);
-    return item;
+    card.appendChild(header);
+    card.appendChild(body);
+    return card;
 }
 
-async function runGeminiAction(promptPrefix, text, bodyContainer) {
-    // API Call
+async function runGemini(promptPrefix, text) {
     return new Promise(resolve => {
-        chrome.storage.local.get(['apiKey'], async (result) => {
-            if (!result.apiKey) {
-                renderError(bodyContainer, "API Key missing. Settings > Extension.");
-                resolve();
-                return;
-            }
-
+        chrome.storage.local.get(['apiKey'], async (res) => {
+            if (!res.apiKey) return resolve("⚠️ Please set your API Key in the extension popup.");
+            
             try {
                 const response = await chrome.runtime.sendMessage({
                     action: 'CALL_GEMINI',
-                    apiKey: result.apiKey,
+                    apiKey: res.apiKey,
                     prompt: `${promptPrefix}\n\n"${text}"`
                 });
-
-                if (response && response.success) {
-                    renderResultContent(bodyContainer, response.data);
-                } else {
-                    renderError(bodyContainer, response.error || "Error generating response.");
-                }
+                resolve(response.success ? response.data : (response.error || "Error"));
             } catch (e) {
-                renderError(bodyContainer, "Connection error.");
+                resolve("Connection failed.");
             }
-            resolve();
         });
     });
 }
 
-function renderResultContent(container, text) {
-    // Clear loading
-    container.innerHTML = '';
+function renderResult(container, text) {
+    container.innerHTML = ''; // Clear loading
+    
+    const contentDiv = document.createElement('div');
+    contentDiv.className = 'ms-content';
+    
+    // Text Block
+    const textBlock = document.createElement('div');
+    textBlock.className = 'ms-text-block';
+    textBlock.textContent = text;
+    contentDiv.appendChild(textBlock);
 
-    const wrapper = document.createElement('div');
-    wrapper.className = 'ms-content-wrapper';
-    
-    const textDiv = document.createElement('div');
-    textDiv.className = 'ms-result-text';
-    textDiv.textContent = text;
-    
-    // Actions (Copy)
-    const actionsDiv = document.createElement('div');
-    actionsDiv.className = 'ms-result-actions';
+    // Footer with Copy
+    const footer = document.createElement('div');
+    footer.className = 'ms-actions-bar';
     
     const copyBtn = document.createElement('button');
-    copyBtn.className = 'ms-mini-btn';
-    copyBtn.innerHTML = `${ICONS.copy} Copy`;
+    copyBtn.className = 'ms-icon-btn';
+    copyBtn.title = "Copy to clipboard";
+    copyBtn.innerHTML = ICONS.copy;
     copyBtn.onclick = (e) => {
         e.stopPropagation();
         navigator.clipboard.writeText(text);
-        copyBtn.innerHTML = `✅ Copied`;
-        copyBtn.classList.add('copied');
-        setTimeout(() => {
-            copyBtn.innerHTML = `${ICONS.copy} Copy`;
-            copyBtn.classList.remove('copied');
-        }, 2000);
+        copyBtn.innerHTML = ICONS.check;
+        setTimeout(() => copyBtn.innerHTML = ICONS.copy, 2000);
     };
-
-    actionsDiv.appendChild(copyBtn);
-    wrapper.appendChild(textDiv);
-    wrapper.appendChild(actionsDiv);
-    container.appendChild(wrapper);
-
-    // Height Calculation Logic
-    const realHeight = wrapper.getBoundingClientRect().height;
     
-    if (realHeight > DEFAULT_RESULT_HEIGHT + 20) { // +20 buffer
-        // Truncate mode
-        container.style.height = DEFAULT_RESULT_HEIGHT + 'px';
-        wrapper.dataset.truncated = 'true';
-        
-        // Add Overlay
-        const overlay = document.createElement('div');
-        overlay.className = 'ms-show-more-overlay';
-        
-        const showMoreBtn = document.createElement('button');
-        showMoreBtn.className = 'ms-expand-trigger';
-        showMoreBtn.innerText = 'Show All';
-        showMoreBtn.onclick = (e) => {
+    footer.appendChild(copyBtn);
+    contentDiv.appendChild(footer);
+    container.appendChild(contentDiv);
+
+    // Measurements for Animation & Truncation
+    const fullHeight = contentDiv.scrollHeight;
+    
+    if (fullHeight > CONFIG.defaultHeight + 20) {
+        // Truncate
+        container.style.height = CONFIG.defaultHeight + 'px';
+        contentDiv.classList.add('ms-truncated');
+
+        // Add Down Arrow
+        const expandBtn = document.createElement('button');
+        expandBtn.className = 'ms-expand-btn';
+        expandBtn.innerHTML = ICONS.chevronDown;
+        expandBtn.onclick = (e) => {
             e.stopPropagation();
-            container.style.height = realHeight + 'px';
-            overlay.remove();
-            wrapper.dataset.truncated = 'false';
+            container.style.height = fullHeight + 'px';
+            contentDiv.classList.remove('ms-truncated');
+            expandBtn.remove();
         };
         
-        overlay.appendChild(showMoreBtn);
-        container.appendChild(overlay);
+        // Insert before footer or append
+        footer.appendChild(expandBtn); // Actually lets put it in footer centered?
+        // Let's adjust CSS: expand btn should be separate or integrated. 
+        // Design calls for "bottom arrow".
+        // Let's replace the footer layout slightly.
+        footer.innerHTML = '';
+        footer.appendChild(copyBtn);
+        // Center the arrow
+        const centerWrapper = document.createElement('div');
+        centerWrapper.style.flex = '1'; centerWrapper.style.display = 'flex'; centerWrapper.style.justifyContent = 'center';
+        centerWrapper.appendChild(expandBtn);
+        footer.appendChild(centerWrapper);
+        // Spacer to balance copy btn
+        footer.appendChild(document.createElement('div')); 
     } else {
-        // Fit content
-        container.style.height = realHeight + 'px';
+        container.style.height = fullHeight + 'px';
     }
-}
-
-function renderError(container, msg) {
-    container.innerHTML = `
-        <div style="padding: 12px; color: #ef4444; font-size: 13px;">${msg}</div>
-    `;
-    container.style.height = container.scrollHeight + 'px';
 }
